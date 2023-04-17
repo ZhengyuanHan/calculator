@@ -56,7 +56,8 @@ def convert_selfchange_to_num(expression_str, dict_helper):
         elif re.match(r'^-?\+\+([A-Za-z][A-Za-z0-9_]*)$', self_change_list[i]):
             expression_group = re.match(r'^(-?)\+\+([A-Za-z][A-Za-z0-9_]*)$', self_change_list[i])
             if expression_group.group(1) == '-':
-                dict_helper[expression_group.group(2)] = float(dict_helper[expression_group.group(2)]) + 1
+                dict_helper.update({expression_group.group(2): float(dict_helper[expression_group.group(2)]) + 1})
+                # dict_helper[expression_group.group(2)] = float(dict_helper[expression_group.group(2)]) + 1
                 self_change_list[i] = '-' + str(float(dict_helper[expression_group.group(2)]))
             else:
                 dict_helper[expression_group.group(2)] = float(dict_helper[expression_group.group(2)]) + 1
@@ -76,7 +77,9 @@ def convert_selfchange_to_num(expression_str, dict_helper):
 
 def expression_parse(expression_str, dict_helper):
     new_expression_str = convert_selfchange_to_num(expression_str, dict_helper)
+    # print(new_expression_str)
     expression_list = string_to_list(new_expression_str)
+    # print(expression_list)
     relation_list = ['==', '<=', '>=', '!=', '<', '>']
     boolean_list = ['&&', '||', '!']
     s = 0
@@ -97,6 +100,7 @@ def expression_parse(expression_str, dict_helper):
                 expression_list[j] = dict_helper[expression_list[j]]
 
     # print(expression_list)
+    # print(dict_helper)
     if '^' in expression_list:
         for ex_i in range(len(expression_list) - 1, 1, -2):
             expression_list[ex_i - 2] = pow(float(expression_list[ex_i - 2]), float(expression_list[ex_i]))
@@ -104,7 +108,7 @@ def expression_parse(expression_str, dict_helper):
         return expression_list[0]
 
     for k in range(0, len(expression_list)):
-        if isinstance(expression_list[k], str) and re.match(r'-+', expression_list[k]):
+        if isinstance(expression_list[k], str) and expression_list[k] == '-':
             expression_list[k + 1] = -float(expression_list[k + 1])
         if isinstance(expression_list[k], str) and re.match(r'\*+', expression_list[k]):
             expression_list[k + 1] = float(expression_list[k - 1]) * float(expression_list[k + 1])
@@ -119,7 +123,7 @@ def expression_parse(expression_str, dict_helper):
             expression_list[k - 1] = 0
 
     for node in expression_list:
-        if isinstance(node, float) or isinstance(node, int) or (isinstance(node, str) and node.isdigit()):
+        if isinstance(node, float) or isinstance(node, int) or (isinstance(node, str) and re.match(r'^-?\d+\.?\d*$', node)):
             s += float(node)
         elif node in relation_list or node in boolean_list:
             num_list.append(s)
@@ -127,6 +131,7 @@ def expression_parse(expression_str, dict_helper):
             s = 0
 
     if not num_list:
+        # print(s)
         return s
     else:
         num_list.append(str(s))
@@ -231,7 +236,11 @@ def error_code(program_str):
             return 1
 
         if not re.search(r'^\s*\*/\s*$', program_str):
-            if i == len(program_item_list) - 1 and re.match(r'[+\-*/^%]', program_item_list[i]):
+            if i < len(program_item_list) - 1 and program_item_list[i] == '+' and program_item_list[i + 1] == '+':
+                return 3
+            if i < len(program_item_list) - 1 and program_item_list[i] == '-' and program_item_list[i + 1] == '-':
+                return 3
+            elif i == len(program_item_list) - 1 and re.match(r'[+\-*/^%]', program_item_list[i]):
                 return 2
             elif i == 0 and re.match(r'[+*/^%]', program_item_list[i]):
                 return 2
@@ -309,6 +318,35 @@ if __name__ == '__main__':
                         variables_dict.update(
                             {input_parse.group(1): expression_parse(op_equals_helper(user_input), variables_dict)})
 
+                elif re.match(r'^([A-Za-z][A-Za-z0-9_]*)\+\+$', user_input):
+                    input_parse = re.match(r'^([A-Za-z][A-Za-z0-9_]*)\+\+$', user_input)
+                    if input_parse.group(1) not in variables_dict:
+                        variables_dict.update({input_parse.group(1): 1.0})
+                    else:
+                        variables_dict.update(
+                            {input_parse.group(1): variables_dict[input_parse.group(1)] + 1.0})
+                elif re.match(r'^\+\+([A-Za-z][A-Za-z0-9_]*)$', user_input):
+                    input_parse = re.match(r'^\+\+([A-Za-z][A-Za-z0-9_]*)$', user_input)
+                    if input_parse.group(1) not in variables_dict:
+                        variables_dict.update({input_parse.group(1): 1.0})
+                    else:
+                        variables_dict.update(
+                            {input_parse.group(1): variables_dict[input_parse.group(1)] + 1.0})
+                elif re.match(r'^([A-Za-z][A-Za-z0-9_]*)--$', user_input):
+                    input_parse = re.match(r'^([A-Za-z][A-Za-z0-9_]*)--$', user_input)
+                    if input_parse.group(1) not in variables_dict:
+                        variables_dict.update({input_parse.group(1): -1.0})
+                    else:
+                        variables_dict.update(
+                            {input_parse.group(1): variables_dict[input_parse.group(1)] - 1.0})
+                elif re.match(r'^--([A-Za-z][A-Za-z0-9_]*)$', user_input):
+                    input_parse = re.match(r'^([A-Za-z][A-Za-z0-9_]*)--$', user_input)
+                    if input_parse.group(1) not in variables_dict:
+                        variables_dict.update({input_parse.group(1): -1.0})
+                    else:
+                        variables_dict.update(
+                            {input_parse.group(1): variables_dict[input_parse.group(1)] - 1.0})
+
                 if re.match(r'^(print)\s+(-?\d+\.?\d*)$', user_input):
                     input_parse = re.match(r'^(print)\s+(-?\d+\.?\d*)$', user_input)
                     result_list.append(float(input_parse.group(2)))
@@ -338,7 +376,11 @@ if __name__ == '__main__':
                         # print(expression_parse(input_parse.group(2), variables_dict))
 
                     else:
-                        result_list.append(variables_dict[input_parse.group(2)])
+                        if input_parse.group(2) not in variables_dict:
+                            variables_dict.update({input_parse.group(2): 0.0})
+                            result_list.append(variables_dict[input_parse.group(2)])
+                        else:
+                            result_list.append(variables_dict[input_parse.group(2)])
                         # print(float(variables_dict[input_parse.group(2)]))
                 elif re.match(r'^(print)\s*$', user_input):
                     result_list.append('parse error')
